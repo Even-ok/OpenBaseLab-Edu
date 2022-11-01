@@ -39,26 +39,27 @@ class cls:
         elif self.algorithm == 'MLP':
             self.model = MLPClassifier(solver='lbfgs')
 
-    def train(self, seed=0, data_type='csv'):
-        if self.algorithm in ['AdaBoost','SVM','NaiveBayes', 'MLP']:
+    def train(self, seed=0, data_type='csv', validate = True):
+        if self.algorithm in ['AdaBoost','SVM','NaiveBayes', 'MLP','KNN','CART']:
             np.random.seed(seed)
             np.random.shuffle(self.dataset)
 
-            self.x_train, self.x_test, self.y_train, self.y_test = \
-            train_test_split(self.x_train, self.y_train, test_size=0.2, random_state=0)
+            if validate:  # 需要划分数据集，并输出准确率
+                self.x_train, self.x_test, self.y_train, self.y_test = \
+                train_test_split(self.x_train, self.y_train, test_size=0.2, random_state=0)
+
             self.model.fit(self.x_train, self.y_train)
+
+            if validate:
+                pred = self.model.predict(self.x_test)
+                acc = accuracy_score(self.y_test, pred)
+                print('准确率为：{}%'.format(acc * 100))
         
-        elif self.algorithm == 'CART':
-            self.model.fit(self.x_train, self.y_train)
+        # elif self.algorithm == 'CART':
+        #     self.model.fit(self.x_train, self.y_train)
             # print(self.model.explained_variance_ratio_)
             # 返回所保留的n个成分各自的方差百分比,这里可以理解为单个变量方差贡献率。
         
-        elif self.algorithm == 'KNN':
-            self.x_train, self.x_test, self.y_train, self.y_test = \
-            train_test_split(self.x_train, self.y_train, test_size=0.2, random_state=0)
-            self.model.fit(self.x_train, self.y_train)
-            acc = self.model.score(self.x_test, self.y_test)
-            print('准确率为：{}%'.format(acc * 100))
         
         elif self.algorithm == 'Kmeans':
             # 对列数据进行文本过滤，只抽取有数据的列
@@ -89,8 +90,9 @@ class cls:
                 print(f" CLUSTER-{i+1} ".center(60, '='))
                 print(self.dataset[labels == i])
 
-            pred = self.model.predict(self.x_test)
-            return pred
+            if data is not np.nan:
+                pred = self.model.predict(self.x_test)
+                return pred
 
 
     # 从文件加载数据集，支持csv文件和txt文件
@@ -126,7 +128,7 @@ class cls:
 
 
     # 支持的type有['csv', 'numpy','pandas','list','txt]，后面一律转为numpy格式
-    def load_dataset(self, X, y = None, type = None, x_column = [], y_column = []):
+    def load_dataset(self, X, y = [], type = None, x_column = [], y_column = []):
         if len(x_column) == 0:
             raise ValueError("请传入数据列号")
         if type == 'csv':
@@ -136,11 +138,11 @@ class cls:
             self.get_data(X,y,x_column,y_column)
         elif type == 'pandas':
             X = X.values
-            y = y.values
+            y = y.values if len(y)>0 else []
             self.get_data(X,y,x_column,y_column)
         elif type == 'list':
             X = np.array(X)
-            y = np.array(y)
+            y = np.array(y) if len(y)>0 else []
             self.get_data(X,y,x_column,y_column)
         elif type == 'txt':
             self.dataset = np.loadtxt(X)
@@ -166,3 +168,5 @@ class cls:
             self.y_train = y[:,y_column]
             if self.y_train.shape[0]:
                 self.dataset = np.concatenate((self.x_train,self.y_train),axis=1) # 按列进行拼接
+        else:
+            self.dataset = self.x_train
